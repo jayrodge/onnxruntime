@@ -25,7 +25,16 @@ jobs:
         -m
       DisplayName: 'Build'
 
-    # all distributed tests
+    # Entry point for all distributed CI tests.
+    # To add new distributed CI test:
+    # - Create a new file with all the tests that can be called as a python script through mpirun or a python
+    #   script that in turn calls other python scripts through mpirun.
+    # - Add a function in orttraining/orttraining/test/python/orttraining_distributed_tests.py similar to 
+    #   run_checkpoint_tests().
+    # - Within the function, call the newly created test file as a script using 
+    #   run_subprocess(command, cwd=cwd, log=log).check_returncode().
+    # - An example of such a test is orttraining/orttraining/test/python/orttraining_test_checkpoint.py
+    #   which is called from the function run_checkpoint_tests().
   - script: |
       docker run \
         --gpus all \

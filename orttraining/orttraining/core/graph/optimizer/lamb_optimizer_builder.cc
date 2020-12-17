@@ -16,7 +16,8 @@ namespace training {
 Status LambOptimizerBuilder::Build(
     const OptimizerBuilderConfig& config,
     GraphAugmenter::GraphDefs& graph_defs,
-    std::unordered_map<std::string, std::unordered_map<std::string, ONNX_NAMESPACE::TensorProto>>& weight_to_opt_mapping,
+    std::vector<ONNX_NAMESPACE::TensorProto>& new_external_initializers,
+    std::unordered_map<std::string, std::unordered_map<std::string, std::string>>& weight_to_opt_mapping,
     std::vector<ArgDef>& output_weight_argdefs,
     std::vector<ArgDef>& output_gradient_argdefs) const {
   const auto& weight_argdefs = config.weight_argdefs;
@@ -76,7 +77,8 @@ Status LambOptimizerBuilder::Build(
   } else {
     step_tensor_proto = CreateTensorProto<int64_t>(step_tensor_name, 1);
   }
-  weight_to_opt_mapping[onnxruntime::training::SHARED_OPTIMIZER_STATES_KEY][step_tensor_name] = step_tensor_proto;
+  new_external_initializers.emplace_back(step_tensor_proto);
+  weight_to_opt_mapping[onnxruntime::training::SHARED_OPTIMIZER_STATES_KEY][step_tensor_name] = step_tensor_name;
   input_argdefs.emplace_back(ArgDef(step_tensor_name));
 
   // Add the first output, which is the updated step.
@@ -234,7 +236,8 @@ Status LambOptimizerBuilder::Build(
         moment_type_proto->mutable_tensor_type()->set_elem_type(element_type);
 
         // Store momentum tensor to initializer list.
-        weight_to_opt_mapping[weight_name][moment_prefix] = moment_tensor_proto;
+        new_external_initializers.emplace_back(std::move(moment_tensor_proto));
+        weight_to_opt_mapping[weight_name][moment_prefix] = gradient_moment_name;
 
         // Add momentums to the input and output list of the Lamb node.
         input_argdefs.emplace_back(ArgDef(gradient_moment_name, moment_type_proto));
